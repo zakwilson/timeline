@@ -1,8 +1,8 @@
 (ns timeline.common
-  (:import [com.petebevin.markdown MarkdownProcessor])
-  (:use clojure.contrib.singleton))
+  (:import [com.petebevin.markdown MarkdownProcessor]))
 
-(def ^{:dynamic true} *md* (per-thread-singleton #(MarkdownProcessor.)))
+;(def ^{:dynamic true} *md* (per-thread-singleton #(MarkdownProcessor.)))
+(def *md* (MarkdownProcessor.))
 
 (defn ^String md [content]
   (.markdown ^MarkdownProcessor (*md*) content))

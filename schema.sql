@@ -1,4 +1,4 @@
-create sequence incidents_id_seq
+create sequence events_id_seq
   start with 1
   increment by 1
   no maxvalue
@@ -30,4 +30,4 @@ create table tags_to_events (
     id integer default nextval('tags_to_events_id_seq'::regclass) primary key,
     event integer references events(id),
     tag character varying (40) references tags(tag)
-)
+);

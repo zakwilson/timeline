@@ -1,0 +1,126 @@
+(ns timeline.data
+  (:use [zutil util map] timeline.common [clj-time.core :exclude [extend]] [korma db core])
+  (:require [clojure.string :as s])
+  (:import org.mindrot.jbcrypt.BCrypt))
+
+(load-config)
+
+(defdb db
+  (postgres (:db @config)))
+
+(defn sql->date [d]
+  (date-time (+ 1900 (.getYear d))
+             (+ 1 (.getMonth d))
+             (.getDate d)))
+
+(defn date-difference [d1 d2]
+  (Math/floor (/ (in-minutes (interval d1 d2))
+                 1440))) ; minutes per day
+
+(defn interval-length [event]
+  (date-difference (:startdate event)
+                   (:enddate event)))
+
+(defn date [date-str]
+  (let [[y m d] (map #(Integer/parseInt %)
+                     (s/split date-str #"-"))]
+    (java.sql.Date. (- y 1900) (- m 1) d)))
+
+(defn date->sql [a-date]
+  (java.sql.Date. (- (year a-date) 1900)
+                  (- (month a-date) 1)
+                  (day a-date)))
+
+(defentity tag
+  (database db)
+  (table :tags)
+  (pk :tag))
+
+(declare events)
+
+(defentity event-tag
+  (database db)
+  (table :tags_to_events)
+  (belongs-to tag {:fk :tag})
+  (belongs-to events {:fk :event}))
+
+(defentity event
+  (database db)
+  (table :events)
+  (transform
+   #(map-keys sql->date
+              % 
+              [:startdate :enddate]))
+  (prepare
+   #(map-keys date->sql
+              %
+              [:startdate :enddate]))
+  (has-many tags))
+
+(defn add-event! [event]
+  "Event keys: [:startdate :enddate :title :description :link :importance]"
+  (insert events
+          (values event)))
+
+
+(defn add-tag! [tagname]
+  (conj! tags {:tag tagname}))
+
+; PERF - there are a lot faster ways to do this
+
+(defn assign-tag-to-event [event tagname]
+  (let [existing-tag
+        @(select events-tags (where (and (= :event (:id event))
+                                         (= :tag tagname))))]
+    (when-not (seq existing-tag)
+      (conj! events-tags {:event (:id event) :tag tagname}))))
+
+
+(defn tag-event [event tag-string]
+  (let [tags (s/split #"\ " tag-string)]
+    (map #(assign-tag-to-event event %)
+         tags)))
+
+;; No message.
+;;   [Thrown class java.lang.NullPointerException]
+
+;; Restarts:
+;;  0: [QUIT] Quit to the SLIME top level
+
+;; Backtrace:
+;;   0: korma.internal.sql$delimit_str.invoke(sql.clj:24)
+;;   1: korma.internal.sql$prefix.invoke(sql.clj:68)
+;;   2: korma.internal.sql$field_str.invoke(sql.clj:109)
+;;   3: korma.internal.sql$sql_select.invoke(sql.clj:288)
+;;   4: korma.internal.sql$eval2439$fn__2440.invoke(sql.clj:381)
+;;   5: clojure.lang.MultiFn.invoke(MultiFn.java:163)
+;;   6: korma.core$exec$fn__2565.invoke(core.clj:328)
+;;   7: korma.core$exec.invoke(core.clj:328)
+;;   8: timeline.data$eval3493.invoke(NO_SOURCE_FILE:1)
+;;   9: clojure.lang.Compiler.eval(Compiler.java:6465)
+;;  10: clojure.lang.Compiler.eval(Compiler.java:6431)
+;;  11: clojure.core$eval.invoke(core.clj:2795)
+;;  12: swank.commands.basic$eval_region.invoke(basic.clj:47)
+;;  13: swank.commands.basic$eval_region.invoke(basic.clj:37)
+;;  14: swank.commands.basic$eval1017$listener_eval__1018.invoke(basic.clj:71)
+;;  15: clojure.lang.Var.invoke(Var.java:401)
+;;  16: timeline.data$eval3491.invoke(NO_SOURCE_FILE)
+;;  17: clojure.lang.Compiler.eval(Compiler.java:6465)
+;;  18: clojure.lang.Compiler.eval(Compiler.java:6431)
+;;  19: clojure.core$eval.invoke(core.clj:2795)
+;;  20: swank.core$eval_in_emacs_package.invoke(core.clj:92)
+;;  21: swank.core$eval_for_emacs.invoke(core.clj:239)
+;;  22: clojure.lang.Var.invoke(Var.java:409)
+;;  23: clojure.lang.AFn.applyToHelper(AFn.java:167)
+;;  24: clojure.lang.Var.applyTo(Var.java:518)
+;;  25: clojure.core$apply.invoke(core.clj:600)
+;;  26: swank.core$eval_from_control.invoke(core.clj:99)
+;;  27: swank.core$eval_loop.invoke(core.clj:104)
+;;  28: swank.core$spawn_repl_thread$fn__782$fn__783.invoke(core.clj:309)
+;;  29: clojure.lang.AFn.applyToHelper(AFn.java:159)
+;;  30: clojure.lang.AFn.applyTo(AFn.java:151)
+;;  31: clojure.core$apply.invoke(core.clj:600)
+;;  32: swank.core$spawn_repl_thread$fn__782.doInvoke(core.clj:306)
+;;  33: clojure.lang.RestFn.invoke(RestFn.java:397)
+;;  34: clojure.lang.AFn.run(AFn.java:24)
+;;  35: java.lang.Thread.run(Thread.java:662)

@@ -1,7 +1,8 @@
 (defproject timeline "0.0.1-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.3.0"]
+                 [zutil "0.2.0"]
                  [noir "1.2.1"]
-                 [korma "0.2.1"]
+                 [korma "0.3.0-alpha5"]
                  [postgresql/postgresql "9.0-801.jdbc4"]
                  [org.mindrot/jbcrypt "0.3m"]
                  [org.apache.commons/commons-email "1.2"]

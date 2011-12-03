@@ -9,9 +9,16 @@
   (postgres (:db @config)))
 
 (defn sql->date [d]
-  (date-time (+ 1900 (.getYear d))
-             (+ 1 (.getMonth d))
-             (.getDate d)))
+  (when d
+    (date-time (+ 1900 (.getYear d))
+               (+ 1 (.getMonth d))
+               (.getDate d))))
+
+(defn date->sql [a-date]
+  (when a-date
+    (java.sql.Date. (- (year a-date) 1900)
+                    (- (month a-date) 1)
+                    (day a-date))))
 
 (defn date-difference [d1 d2]
   (Math/floor (/ (in-minutes (interval d1 d2))
@@ -26,10 +33,6 @@
                      (s/split date-str #"-"))]
     (java.sql.Date. (- y 1900) (- m 1) d)))
 
-(defn date->sql [a-date]
-  (java.sql.Date. (- (year a-date) 1900)
-                  (- (month a-date) 1)
-                  (day a-date)))
 
 (defentity tag
   (database db)
@@ -39,18 +42,16 @@
 (declare events)
 
 (defentity event-tag
-  (database db)
   (table :tags_to_events)
   (belongs-to tag {:fk :tag})
   (belongs-to events {:fk :event}))
 
 (defentity event
-  (database db)
   (table :events)
   (transform
    #(map-keys sql->date
               % 
-              [:startdate :enddate]))
+              [:startdate :enddate])))
   (prepare
    #(map-keys date->sql
               %
@@ -68,8 +69,8 @@
           (values {:tag tagname})))
 
 (defn get-event [id]
-  (-> event
-      (select (where {:id id}))
+  (-> (select event (where {:id id}))
+      (with event-tag)
       exec))
 
 ; PERF - there are a lot faster ways to do this

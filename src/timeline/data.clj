@@ -33,60 +33,77 @@
                      (s/split date-str #"-"))]
     (java.sql.Date. (- y 1900) (- m 1) d)))
 
+(defn transform-dates [evt & keys]
+  (map-keys sql->date
+            evt
+            keys))
+
+(defn prepare-dates [evt & keys]
+  (map-keys sql->date
+            evt
+            keys))
+
+(defn transform-tags [evt]
+  (assoc evt
+    :tag
+    (map :tag (:tag evt))))
+
+(defn prepare-tags [evt]
+  (assoc evt
+    :tag
+    (map #({:tag %
+            :event-id (:id evt)})
+         (:tag evt))))
+
+(declare event)
 
 (defentity tag
-  (database db)
-  (table :tags)
-  (pk :tag))
-
-(declare events)
-
-(defentity event-tag
-  (table :tags_to_events)
-  (belongs-to tag {:fk :tag})
-  (belongs-to events {:fk :event}))
+  (table :tag)
+  (belongs-to event))
 
 (defentity event
-  (table :events)
   (transform
-   #(map-keys sql->date
-              % 
-              [:startdate :enddate])))
+   #(-> %
+        (transform-dates :startdate :enddate)
+        transform-tags))
   (prepare
-   #(map-keys date->sql
-              %
-              [:startdate :enddate]))
-  (has-many event-tag))
+   #(-> %
+        (prepare-dates :startdate :enddate)))
+  (has-many tag))
+
+(declare assign-tag-to-event!)
 
 (defn add-event! [e]
   "Event keys: [:startdate :enddate :title :description :link :importance]"
-  (insert event
-          (values e)))
-
-
-(defn add-tag! [tagname]
-  (insert tag
-          (values {:tag tagname})))
+  (let [tags (:tag e)
+        e (dissoc e :tag)]
+    (insert event
+            (values e))
+    (when tags
+      (map (partial assign-tag-to-event! e)
+           tags))))
 
 (defn get-event [id]
-  (-> (select event (where {:id id}))
-      (with event-tag)
-      exec))
+  (-> (select* event)
+      (where {:id id})
+      (with tag)
+      exec
+      first))
 
 ; PERF - there are a lot faster ways to do this
 
-(defn assign-tag-to-event [evt tagname]
+(defn assign-tag-to-event! [evt tagname]
   (let [existing-tag
-        (-> event-tag
-            (select (where {:event (:id evt)
-                            :tag tagname}))
-            (exec))]
+        (-> (select* tag)
+            (where {:event_id (:id evt)
+                    :tag tagname})
+            exec)]
     (when-not (seq existing-tag)
-      (insert event-tag
-              (values {:event (:id evt) :tag tagname})))))
+      (insert tag
+              (values {:event_id (:id evt) :tag tagname})))))
 
 
-(defn tag-event [event tag-string]
+(defn tag-event! [event tag-string]
   (let [tags (s/split #"\ " tag-string)]
-    (map #(assign-tag-to-event event %)
+    (map #(assign-tag-to-event! event %)
          tags)))

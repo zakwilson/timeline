@@ -11,4 +11,4 @@
                  [clj-http "0.1.3"]
                  [clj-time "0.3.3"]]
   :dev-dependencies [[swank-clojure "1.3.4-SNAPSHOT"]]
-  :main timeline.web.main)
+  :main timeline.server)

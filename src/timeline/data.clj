@@ -33,13 +33,16 @@
                      (s/split date-str #"-"))]
     (java.sql.Date. (- y 1900) (- m 1) d)))
 
+(defn prepare-integers [evt & keys]
+  (map-keys integer evt keys))
+
 (defn transform-dates [evt & keys]
   (map-keys sql->date
             evt
             keys))
 
 (defn prepare-dates [evt & keys]
-  (map-keys sql->date
+  (map-keys date->sql
             evt
             keys))
 
@@ -68,7 +71,8 @@
         transform-tags))
   (prepare
    #(-> %
-        (prepare-dates :startdate :enddate)))
+        (prepare-dates :startdate :enddate)
+        (prepare-integers :importance)))
   (has-many tag))
 
 (declare assign-tag-to-event!)
@@ -89,6 +93,11 @@
       (with tag)
       exec
       first))
+
+(defn get-all-events []
+  (-> (select* event)
+      (with tag)
+      exec))
 
 ; PERF - there are a lot faster ways to do this
 

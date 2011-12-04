@@ -9,6 +9,7 @@
                  [org.markdownj/markdownj "0.3.0-1.0.2b4"]
                  [net.htmlparser.jericho/jericho-html "3.1"]
                  [clj-http "0.1.3"]
-                 [clj-time "0.3.3"]]
+                 [clj-time "0.3.3"]
+                 [org.clojure/data.json "0.1.1"]]
   :dev-dependencies [[swank-clojure "1.3.4-SNAPSHOT"]]
   :main timeline.server)

@@ -100,7 +100,7 @@
 
 (defn write-json-datetime [x out _]
   (.print out
-          (unparse (formatters :year-month-day) x)))
+          (str "\"" (unparse (formatters :year-month-day) x) "\"")))
 
 (extend org.joda.time.DateTime Write-JSON
         {:write-json write-json-datetime})
@@ -109,9 +109,8 @@
   (json-str [{:id "history"
               :title "A brief history of civilization"
               :description "All the interesting bits"
-              :focus_date "1941-12-07 12:00:00"
-              :initial_zoom "37"
-              :events (map #(dissoc % :tag)
-                           (data/get-all-events))}]))
+              :focus_date "-44-03-15 12:00:00"
+              :initial_zoom "65"
+              :events (data/get-all-events)}]))
 
 

@@ -1,5 +1,9 @@
 (ns timeline.data
-  (:use [zutil util map] timeline.common [clj-time.core :exclude [extend]] [korma db core])
+  (:use [zutil util map]
+        timeline.common
+        [clj-time.core :exclude [extend]]
+        clj-time.coerce
+        [korma db core])
   (:require [clojure.string :as s])
   (:import org.mindrot.jbcrypt.BCrypt))
 
@@ -10,15 +14,11 @@
 
 (defn sql->date [d]
   (when d
-    (date-time (+ 1900 (.getYear d))
-               (+ 1 (.getMonth d))
-               (.getDate d))))
+    (from-long (.getTime d))))
 
 (defn date->sql [a-date]
   (when a-date
-    (java.sql.Date. (- (year a-date) 1900)
-                    (- (month a-date) 1)
-                    (day a-date))))
+    (java.sql.Date. (.getMillis a-date))))
 
 (defn date-difference [d1 d2]
   (Math/floor (/ (in-minutes (interval d1 d2))

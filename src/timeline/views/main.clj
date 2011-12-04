@@ -2,7 +2,8 @@
   (:use noir.core
         [hiccup core page-helpers]
         [ring.middleware file]
-        [ring.util response]))
+        [ring.util response]
+        compojure.core))
 
 (defpartial layout [content & {:keys [js css]}]
   (html5
@@ -31,11 +32,3 @@
                "/widget/js/timeglider.min.js"
                "/javascript/timeline.js"]))
 
-(post-route "/javascript/*" [*]
-            (or (file-response (str "static/javascript/" *)) :next))
-
-(post-route "/css/*" [*]
-            (or (file-response (str "static/css/" *)) :next))
-
-(post-route "/widget/*" [*]
-            (or (file-response (str "static/widget/" *)) :next))

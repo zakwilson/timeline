@@ -54,16 +54,16 @@
 
 (defn valid-event? [{:keys [startdate enddate title description link importance]}]
   (rule (has-value? startdate)
-        [:startdate "An event must have a starting date (ending date is optional)"]
+        [:startdate "An event must have a starting date (ending date is optional)"])
   (rule (has-value? title)
         [:title "A title is required"])
   (rule (has-value? description)
         [:description "A description is required"])
   (comment (rule (and (has-value? importance)
-             (>= 100 (integer importance))
-             (<= 1 (integer importance)))
-        [:importance "Importance must be between 1 and 100"]))
-  (not (errors? :lastname :firstname))))
+                      (>= 100 (integer importance))
+                      (<= 1 (integer importance)))
+                 [:importance "Importance must be between 1 and 100"]))
+  (not (errors? :startdate :enddate :title :description :link :importance)))
 
 (defpartial edit-event-form [& [evt]]
   (form-to [:post "/event/new"]
@@ -74,20 +74,20 @@
   (when-not (empty? date-str)
     (let [[y m d e] (map maybe-integer
                          (s/split date-str #"/"))]
-      (date-time y m d))))
+      (date-time y m d 12))))
 
 (defpage event-post [:post "/event/new"] {:as event}
-;  (if (valid-event? event)
+  (if (valid-event? event)
     (do (data/add-event! (map-keys date event [:startdate :enddate]))
         (redirect "/")))
-;    (render "/event/new" event)))
+    (render "/" event))
   
 
-(defpage home "/" []
+(defpage "/" {:as event}
   (layout [:div#maincontent
            [:div#placement {:style "height: 600px"}]
            [:div#entryform {:style "margin-top: 30px"}
-            (edit-event-form)]]
+            (edit-event-form event)]]
           :css ["/widget/css/aristo/jquery-ui-1.8.5.custom.css"
                 "/widget/js/timeglider/Timeglider.css"
                 "/css/anytimec.css"]

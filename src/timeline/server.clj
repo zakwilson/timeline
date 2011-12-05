@@ -7,10 +7,16 @@
 
 (server/load-views "src/timeline/views/")
 
-(defn -main [& m]
+(defn start-swank []
+  (start-repl (@config :swank-port)
+              :host "127.0.0.1"))
+
+(defn start-web [m]
   (let [mode (or (first m) :dev)]
-    (start-repl (@config :swank-port)
-                :host "127.0.0.1")
     (server/start (@config :port)
                   {:mode (keyword mode)
                    :ns 'timeline})))
+
+(defn -main [& m]
+  (start-swank)
+  (start-web m))

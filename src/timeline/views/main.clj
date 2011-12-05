@@ -7,7 +7,8 @@
         clojure.data.json
         [clj-time.core :exclude [extend]]
         clj-time.format
-        [zutil util map])
+        [zutil util map]
+        [timeline common])
   (:require [timeline.data :as data]
             [clojure.string :as s]))
 
@@ -59,10 +60,10 @@
         [:title "A title is required"])
   (rule (has-value? description)
         [:description "A description is required"])
-  (comment (rule (and (has-value? importance)
+  (rule (and (has-value? importance)
                       (>= 100 (integer importance))
                       (<= 1 (integer importance)))
-                 [:importance "Importance must be between 1 and 100"]))
+        [:importance "Importance must be between 1 and 100"])
   (not (errors? :startdate :enddate :title :description :link :importance)))
 
 (defpartial edit-event-form [& [evt]]
@@ -79,8 +80,8 @@
 (defpage event-post [:post "/event/new"] {:as event}
   (if (valid-event? event)
     (do (data/add-event! (map-keys date event [:startdate :enddate]))
-        (redirect "/")))
-    (render "/" event))
+        (redirect "/"))
+    (render "/" event)))
   
 
 (defpage "/" {:as event}
@@ -105,12 +106,14 @@
 (extend org.joda.time.DateTime Write-JSON
         {:write-json write-json-datetime})
 
+(defn md-desc [e]
+  (assoc e :description (md (:description e))))
+
 (defpage timeline "/timeline" []
   (json-str [{:id "history"
               :title "A brief history of civilization"
               :description "All the interesting bits"
               :focus_date "-44-03-15 12:00:00"
               :initial_zoom "65"
-              :events (data/get-all-events)}]))
-
-
+              :events (map md-desc
+                           (data/get-all-events))}]))

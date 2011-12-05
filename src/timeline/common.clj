@@ -2,10 +2,10 @@
   (:import [com.petebevin.markdown MarkdownProcessor]))
 
 ;(def ^{:dynamic true} *md* (per-thread-singleton #(MarkdownProcessor.)))
-(def *md* (MarkdownProcessor.))
+(def mdp (MarkdownProcessor.))
 
 (defn ^String md [content]
-  (.markdown ^MarkdownProcessor (*md*) content))
+  (.markdown ^MarkdownProcessor mdp content))
 
 ; This provides for a system for sitewide configuration and defaults
 ; There MUST be a config.clj in the base directory with, at a minimum

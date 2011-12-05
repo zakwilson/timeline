@@ -113,6 +113,6 @@
 
 
 (defn tag-event! [event tag-string]
-  (let [tags (s/split #"\ " tag-string)]
+  (let [tags (s/split tag-string #",")]
     (map #(assign-tag-to-event! event %)
          tags)))

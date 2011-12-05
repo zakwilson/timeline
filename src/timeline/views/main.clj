@@ -16,8 +16,9 @@
   (html5
    [:head
     [:title "Timeline"]
-    [:style "textarea {width: 600px; height: 300px; display: block;}
-             input {width: 200px; background-color: white; color: black; display: block;}"]
+    [:style "textarea {width: 600px; height: 300px;}
+             label {display: block;}
+             input {width: 200px; background-color: white; color: black;}"]
     (if (string? js)
       (include-js js)
       (map include-js js))
@@ -33,29 +34,47 @@
 (defpartial error-item [[first-error]]
   [:p.error first-error])
 
-(defpartial event-fields [{:keys [startdate enddate title description link importance]}]
+(defpartial event-fields [{:keys [startdate enddate title description link importance tags]}]
+  (label "startdate" "Start date (year/month/day) Only year is required")
   (on-error :startdate error-item)
-  (label "startdate" "And so it begins...")
   (text-field "startdate" startdate)
+  [:a {:href "javascript:void(0)" :id "start-date-picker"} "Picker"]
+  (label "enddate" "End date (optional)")
   (on-error :enddate error-item)
-  (label "enddate" "When will it end? (optional)")
   (text-field "enddate" enddate)
-  (on-error :title error-item)
+  [:a {:href "javascript:void(0)" :id "end-date-picker"} "Picker"]
   (label "title" "Title")
+  (on-error :title error-item)
   (text-field "title" title)
-  (on-error :description error-item)
   (label "description" "Description")
+  (on-error :description error-item)
   (text-area "description" description)
-  (on-error :link error-item)
   (label "link" "Link (wikipedia, maybe?)")
+  (on-error :link error-item)
   (text-field "link" link)
-  (on-error :importance error-item)
   (label "importance" "Importance (1-100)")
-  (text-field "importance" (or importance 50)))
+  (on-error :importance error-item)
+  (text-field "importance" (or importance 50))
+  (label "tags" "Tags (comma delimited)")
+  (text-field "tags" tags))
+
+(defn date [date-str]
+  (when-not (empty? date-str)
+    (let [base-args (map maybe-integer
+                         (s/split date-str #"/"))
+          args (filter identity base-args)]
+      (when-not (empty? args)
+        (apply date-time args)))))
 
 (defn valid-event? [{:keys [startdate enddate title description link importance]}]
   (rule (has-value? startdate)
         [:startdate "An event must have a starting date (ending date is optional)"])
+  (rule (date startdate)
+        [:startdate "Invalid date"])
+  (rule (if (empty? enddate)
+          true
+          (date enddate))
+        [:enddate "Invalid date"])
   (rule (has-value? title)
         [:title "A title is required"])
   (rule (has-value? description)
@@ -71,18 +90,16 @@
            (event-fields evt)
            (submit-button "Create")))
 
-(defn date [date-str]
-  (when-not (empty? date-str)
-    (let [[y m d e] (map maybe-integer
-                         (s/split date-str #"/"))]
-      (date-time y m d 12))))
-
 (defpage event-post [:post "/event/new"] {:as event}
   (if (valid-event? event)
-    (do (data/add-event! (map-keys date event [:startdate :enddate]))
-        (redirect "/"))
+    (let [event-for-sql 
+          (-> (map-keys date event [:startdate :enddate])
+              (dissoc :tags))
+          evt (data/add-event! event-for-sql)]
+      (spit "event" event)
+      (data/tag-event! evt (:tags event))
+      (redirect "/"))
     (render "/" event)))
-  
 
 (defpage "/" {:as event}
   (layout [:div#maincontent
@@ -91,7 +108,8 @@
             (edit-event-form event)]]
           :css ["/widget/css/aristo/jquery-ui-1.8.5.custom.css"
                 "/widget/js/timeglider/Timeglider.css"
-                "/css/anytimec.css"]
+                "/css/anytimec.css"
+                "/css/modal.css"]
           :js ["/widget/js/jquery-1.4.4.min.js"
                "/widget/js/jquery-ui-1.8.9.custom.min.js"
                "/widget/js/timeglider.min.js"
@@ -115,5 +133,7 @@
               :description "All the interesting bits"
               :focus_date "-44-03-15 12:00:00"
               :initial_zoom "65"
+              :event_modal {:type "full"
+                            :href "/html/modal.html"}
               :events (map md-desc
                            (data/get-all-events))}]))

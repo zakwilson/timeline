@@ -49,7 +49,8 @@ CREATE TABLE event (
     title character varying(140),
     description character varying,
     link character varying(512),
-    importance integer
+    importance integer,
+    parent integer
 );
 
 
@@ -60,7 +61,7 @@ ALTER TABLE public.event OWNER TO timeline;
 --
 
 CREATE TABLE tag (
-    tag character varying(40) NOT NULL,
+    tag character varying NOT NULL,
     event_id integer NOT NULL
 );
 

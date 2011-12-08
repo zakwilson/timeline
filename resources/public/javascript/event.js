@@ -30,3 +30,37 @@ function init_datepicker(){
                 { format: rangeDemoFormat } );
     } catch(e){ $("#rangeDemoFinish").val("").attr("disabled","disabled"); } } );
 }
+
+function fixdate (d){
+    if (typeof(d) != "string")
+        return d;
+    d = d.replace(/-/g, "/");
+    // leading - means BCE
+    return d.substring(0,1) == "/" ? d.replace("/", "-") : d;
+}
+
+function populate (evt){
+    $('#id').val(evt.id);
+    $('#startdate').val(fixdate(evt.startdate));
+    $('#enddate').val(fixdate(evt.enddate));
+    $('#evt-form #title').val(evt.title);
+    $('#description').val(evt.description);
+    $('#link').val(evt.link);
+    $('#importance').val(evt.importance);
+    $('#tags').val(evt.tags);
+}
+
+function edit(ev){
+    var id = $(ev).attr('id').substring(3);
+    $.ajax({url: "/event/" + id,
+            dataType: "json",
+            success: populate});
+} 
+
+function del(ev){
+    var id = $(ev).attr('id').substring(3);
+    $.ajax({url: "/event/delete",
+            type: "POST",
+            data: {id: id},
+            success: function () {ev.remove()}});
+}

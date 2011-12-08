@@ -75,7 +75,7 @@
   (prepare
    #(-> %
         (prepare-dates :startdate :enddate)
-        (prepare-integers :importance :id)))
+        (prepare-integers :importance)))
   (has-many tag)
   (has-many uploads))
 
@@ -101,12 +101,14 @@
   (-> (select* event)
       (where {:id id})
       (with tag)
+      (with uploads)
       exec
       first))
 
 (defn get-all-events []
   (-> (select* event)
       (with tag)
+      (with uploads)
       exec))
 
 ; PERF - there are a lot faster ways to do this
@@ -131,3 +133,7 @@
   (insert uploads
           (values {:event_id (:id evt)
                    :filename filename})))
+
+(defn delete-event! [evt]
+  (delete event
+          (where {:id (:id evt)})))

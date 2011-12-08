@@ -90,7 +90,8 @@
   (not (errors? :startdate :enddate :title :description :link :importance)))
 
 (defpartial edit-event-form [& [evt]]
-  [:form {:method "post"
+  [:form {:id "evt-form"
+          :method "post"
           :enctype "multipart/form-data"
           :action "/event/new"}
            (event-fields evt)
@@ -122,7 +123,8 @@
           (-> (map-keys date event [:startdate :enddate])
               (dissoc :tags :file)
               (assoc :start_date_format (detect-date-format (:startdate event))
-                     :end_date_format (detect-date-format (:enddate event))))
+                     :end_date_format (detect-date-format (:enddate event))
+                     :id (integer (:id event))))
           evt (if (has-value? (:id event))
                 (data/update-event! event-for-sql)
                 (data/add-event! (dissoc event-for-sql :id)))]
@@ -132,6 +134,10 @@
         (handle-file evt req))
       (redirect "/"))
     (render "/" event)))
+
+(defpage event-delete [:post "/event/delete"] {:as event}
+  (data/delete-event! {:id (integer (:id event))})
+  "")
 
 (defpage "/" {:as event}
   (layout [:div#maincontent
@@ -166,8 +172,20 @@
 (defn md-desc [e]
   (assoc e :description (md (:description e))))
 
-(defpage json-event "/event/:id" [id]
-  (json-str (data/get-event id)))
+(defn md-links [e]
+  (assoc e :description
+         (apply str
+                (map #(str "[" (:filename %) "]"
+                           "("
+                           "/uploads/"
+                           (:id e)
+                           "/"
+                           (:filename %)
+                           ")\n")
+                     (:uploads e)))))
+
+(defpage "/event/:id" {:keys [id]}
+  (json-str (data/get-event (integer id))))
 
 (defpage timeline "/timeline" []
   (json-str [{:id "history"
@@ -176,5 +194,6 @@
               :focus_date "-44-03-15 12:00:00"
               :initial_zoom "65"
               :events (map md-desc
-                           (map append-tags
-                                (data/get-all-events)))}]))
+                           (map md-links
+                                (map append-tags
+                                     (data/get-all-events))))}]))

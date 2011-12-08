@@ -1,5 +1,5 @@
 (ns timeline.views.main
-  (:use [noir core validation]
+  (:use [noir core validation request]
         [hiccup core page-helpers form-helpers]
         [ring.middleware file]
         [ring.util response]
@@ -10,7 +10,8 @@
         [zutil util map]
         [timeline common])
   (:require [timeline.data :as data]
-            [clojure.string :as s]))
+            [clojure.string :as s])
+  (:import [java.io File]))
 
 (defpartial layout [content & {:keys [js css]}]
   (html5
@@ -34,7 +35,8 @@
 (defpartial error-item [[first-error]]
   [:p.error first-error])
 
-(defpartial event-fields [{:keys [startdate enddate title description link importance tags]}]
+(defpartial event-fields [{:keys [startdate enddate title description link importance tags id]}]
+  (hidden-field "id" id)
   (label "startdate" "Start date (year/month/day) Only year is required")
   (on-error :startdate error-item)
   (text-field "startdate" startdate)
@@ -55,6 +57,8 @@
   (label "importance" "Importance (1-100)")
   (on-error :importance error-item)
   (text-field "importance" (or importance 50))
+  (label "file" "Attach files")
+  [:input {:type "file" :id "file" :name "file"}]
   (label "tags" "Tags (comma delimited)")
   (text-field "tags" tags))
 
@@ -86,18 +90,46 @@
   (not (errors? :startdate :enddate :title :description :link :importance)))
 
 (defpartial edit-event-form [& [evt]]
-  (form-to [:post "/event/new"]
+  [:form {:method "post"
+          :enctype "multipart/form-data"
+          :action "/event/new"}
            (event-fields evt)
-           (submit-button "Create")))
+           (submit-button "Create")])
+
+(defn detect-date-format [date-string]
+  (let [[y m d] (s/split date-string #"/")]
+    (cond (and y m d) "%Y/%c/%e"
+          (and y m) "%Y/%c"
+          y "%Y")))
+
+(defn handle-file [evt req]
+  (let [file-req (get-in req [:params :file])
+        filename (:filename file-req)
+        tmpfile (:tempfile file-req)
+        new-file-dir (str "resources/public/uploads/"
+                           (:id evt)
+                           "/")
+        new-file-path (str new-file-dir filename)]
+    (data/add-upload! evt filename)
+    (ensure-directory-exists (File. new-file-dir))
+    (spit new-file-path ; FIXME - is this needed?
+          (slurp (.getPath tmpfile)))))
 
 (defpage event-post [:post "/event/new"] {:as event}
   (if (valid-event? event)
-    (let [event-for-sql 
+    (let [req (ring-request)
+          event-for-sql 
           (-> (map-keys date event [:startdate :enddate])
-              (dissoc :tags))
-          evt (data/add-event! event-for-sql)]
+              (dissoc :tags :file)
+              (assoc :start_date_format (detect-date-format (:startdate event))
+                     :end_date_format (detect-date-format (:enddate event))))
+          evt (if (has-value? (:id event))
+                (data/update-event! event-for-sql)
+                (data/add-event! (dissoc event-for-sql :id)))]
       (spit "event" event)
       (data/tag-event! evt (:tags event))
+      (when (has-value? (get-in req [:params :file :filename]))
+        (handle-file evt req))
       (redirect "/"))
     (render "/" event)))
 
@@ -108,8 +140,7 @@
             (edit-event-form event)]]
           :css ["/widget/css/aristo/jquery-ui-1.8.5.custom.css"
                 "/widget/js/timeglider/Timeglider.css"
-                "/css/anytimec.css"
-                "/css/modal.css"]
+                "/css/anytimec.css"]
           :js ["/widget/js/jquery-1.4.4.min.js"
                "/widget/js/jquery-ui-1.8.9.custom.min.js"
                "/widget/js/timeglider.min.js"
@@ -124,8 +155,19 @@
 (extend org.joda.time.DateTime Write-JSON
         {:write-json write-json-datetime})
 
+(defn append-tags [e]
+  (assoc e :description
+         (str (:description e)
+              "\n\n"
+              "Tags: "
+              (apply str
+                     (interpose ", " (:tag e))))))
+
 (defn md-desc [e]
   (assoc e :description (md (:description e))))
+
+(defpage json-event "/event/:id" [id]
+  (json-str (data/get-event id)))
 
 (defpage timeline "/timeline" []
   (json-str [{:id "history"
@@ -133,7 +175,6 @@
               :description "All the interesting bits"
               :focus_date "-44-03-15 12:00:00"
               :initial_zoom "65"
-              :event_modal {:type "full"
-                            :href "/html/modal.html"}
               :events (map md-desc
-                           (data/get-all-events))}]))
+                           (map append-tags
+                                (data/get-all-events)))}]))

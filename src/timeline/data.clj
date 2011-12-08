@@ -60,6 +60,9 @@
 
 (declare event)
 
+(defentity uploads
+  (belongs-to event))
+
 (defentity tag
   (table :tag)
   (belongs-to event))
@@ -72,20 +75,27 @@
   (prepare
    #(-> %
         (prepare-dates :startdate :enddate)
-        (prepare-integers :importance)))
-  (has-many tag))
+        (prepare-integers :importance :id)))
+  (has-many tag)
+  (has-many uploads))
 
 (declare assign-tag-to-event!)
 
 (defn add-event! [e]
   "Event keys: [:startdate :enddate :title :description :link :importance]"
   (let [tags (:tag e)
-        e (dissoc e :tag)]
-    (insert event
-            (values e))
+        e (dissoc e :tag)
+        new-event (insert event
+                          (values e))]
     (when tags
       (map (partial assign-tag-to-event! e)
-           tags))))
+           tags))
+    new-event))
+
+(defn update-event! [e]
+  (update event
+          (set-fields e)
+          (where {:id (:id e)})))
 
 (defn get-event [id]
   (-> (select* event)
@@ -111,9 +121,13 @@
       (insert tag
               (values {:event_id (:id evt) :tag tagname})))))
 
-
 (defn tag-event! [event tag-string]
   (let [tags (map #(.toLowerCase %)
                   (s/split tag-string #","))]
     (map #(assign-tag-to-event! event %)
          tags)))
+
+(defn add-upload! [evt filename]
+  (insert uploads
+          (values {:event_id (:id evt)
+                   :filename filename})))

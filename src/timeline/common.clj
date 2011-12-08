@@ -37,3 +37,7 @@
 
 (defn save-config []
   (spit "config.clj" @config))
+
+(defn ensure-directory-exists [dir]
+  (when-not (.exists dir)
+    (.mkdirs dir)))

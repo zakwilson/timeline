@@ -47,7 +47,7 @@ function populate (evt){
     $('#description').val(evt.description);
     $('#link').val(evt.link);
     $('#importance').val(evt.importance);
-    $('#tags').val(evt.tags);
+    $('#tags').val(evt.tag);
 }
 
 function edit(ev){

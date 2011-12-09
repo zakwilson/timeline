@@ -3,7 +3,8 @@
         timeline.common
         [clj-time.core :exclude [extend]]
         clj-time.coerce
-        [korma db core])
+        [korma db core]
+        clojure.java.io)
   (:require [clojure.string :as s])
   (:import org.mindrot.jbcrypt.BCrypt))
 
@@ -79,7 +80,8 @@
   (has-many tag)
   (has-many uploads))
 
-(declare assign-tag-to-event!)
+(declare assign-tag-to-event!
+         tag-event!)
 
 (defn add-event! [e]
   "Event keys: [:startdate :enddate :title :description :link :importance]"
@@ -134,6 +136,36 @@
           (values {:event_id (:id evt)
                    :filename filename})))
 
+(defn event-upload-dir [evt]
+  (str "resources/public/uploads/"
+       (:id evt)
+       "/"))
+
+(defn handle-file [evt req]
+  (let [file-req (get-in req [:params :file])
+        filename (:filename file-req)
+        tmpfile (:tempfile file-req)
+        new-file-dir (event-upload-dir evt)
+        new-file-path (str new-file-dir filename)]
+    (add-upload! evt filename)
+    (ensure-directory-exists (file new-file-dir))
+    (copy tmpfile (file new-file-path))))
+
+(defn delete-dir [d]
+  (doseq [f (reverse (file-seq d))]
+    (delete-file f true)))
+
+(defn delete-uploads! [evt]
+  (delete-dir (file (event-upload-dir evt))))
+
 (defn delete-event! [evt]
+  (delete tag
+          (where {:event_id (:id evt)}))
+  (delete-uploads! evt)
+  (delete uploads
+          (where {:event_id (:id evt)}))
   (delete event
           (where {:id (:id evt)})))
+
+
+{:link "", :startdate "-123", :enddate "", :title "test", :importance "50", :id "", :file {:size 2631, :tempfile #<File /tmp/ring-multipart-196505194684475894.tmp>, :content-type "application/octet-stream", :filename "test"}, :description "es", :tags "this, is a, test"}

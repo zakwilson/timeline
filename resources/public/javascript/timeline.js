@@ -11,7 +11,3 @@ $(document).ready(function () {
     });
     
 });
-
-function edit (id){
-    alert(id);
-}

@@ -103,19 +103,6 @@
           (and y m) "%Y/%c"
           y "%Y")))
 
-(defn handle-file [evt req]
-  (let [file-req (get-in req [:params :file])
-        filename (:filename file-req)
-        tmpfile (:tempfile file-req)
-        new-file-dir (str "resources/public/uploads/"
-                           (:id evt)
-                           "/")
-        new-file-path (str new-file-dir filename)]
-    (data/add-upload! evt filename)
-    (ensure-directory-exists (File. new-file-dir))
-    (spit new-file-path ; FIXME - is this needed?
-          (slurp (.getPath tmpfile)))))
-
 (defpage event-post [:post "/event/new"] {:as event}
   (if (valid-event? event)
     (let [req (ring-request)
@@ -123,15 +110,16 @@
           (-> (map-keys date event [:startdate :enddate])
               (dissoc :tags :file)
               (assoc :start_date_format (detect-date-format (:startdate event))
-                     :end_date_format (detect-date-format (:enddate event))
-                     :id (integer (:id event))))
+                     :end_date_format (detect-date-format (:enddate event))))
           evt (if (has-value? (:id event))
-                (data/update-event! event-for-sql)
+                (data/update-event! (update-in event-for-sql
+                                               [:id]
+                                               integer))
                 (data/add-event! (dissoc event-for-sql :id)))]
       (spit "event" event)
       (data/tag-event! evt (:tags event))
       (when (has-value? (get-in req [:params :file :filename]))
-        (handle-file evt req))
+        (data/handle-file evt req))
       (redirect "/"))
     (render "/" event)))
 
@@ -174,15 +162,16 @@
 
 (defn md-links [e]
   (assoc e :description
-         (apply str
-                (map #(str "[" (:filename %) "]"
-                           "("
-                           "/uploads/"
-                           (:id e)
-                           "/"
-                           (:filename %)
-                           ")\n")
-                     (:uploads e)))))
+         (str (:description e)
+              (apply str
+                     (map #(str "[" (:filename %) "]"
+                                "("
+                                "/uploads/"
+                                (:id e)
+                                "/"
+                                (:filename %)
+                                ")\n")
+                          (:uploads e))))))
 
 (defpage "/event/:id" {:keys [id]}
   (json-str (data/get-event (integer id))))
@@ -191,8 +180,8 @@
   (json-str [{:id "history"
               :title "A brief history of civilization"
               :description "All the interesting bits"
-              :focus_date "-44-03-15 12:00:00"
-              :initial_zoom "65"
+              :focus_date "-432-01-01 12:00:00"
+              :initial_zoom "57"
               :events (map md-desc
                            (map md-links
                                 (map append-tags

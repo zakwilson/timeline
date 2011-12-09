@@ -116,6 +116,7 @@
 ; PERF - there are a lot faster ways to do this
 
 (defn assign-tag-to-event! [evt tagname]
+  (spit "tag" (str evt "\n\n" tagname "\n"))
   (let [existing-tag
         (-> (select* tag)
             (where {:event_id (:id evt)
@@ -125,11 +126,15 @@
       (insert tag
               (values {:event_id (:id evt) :tag tagname})))))
 
-(defn tag-event! [event tag-string]
-  (let [tags (map #(.toLowerCase %)
-                  (s/split tag-string #","))]
-    (map #(assign-tag-to-event! event %)
-         tags)))
+(defn string->tags [tag-string]
+  (map #(.toLowerCase (s/trim %))
+       (s/split tag-string #",")))
+
+(defn tag-event! [evt tag-string]
+  (let [tags (string->tags tag-string)]
+    (dorun
+     (map #(assign-tag-to-event! evt %)
+          tags))))
 
 (defn add-upload! [evt filename]
   (insert uploads
@@ -166,6 +171,3 @@
           (where {:event_id (:id evt)}))
   (delete event
           (where {:id (:id evt)})))
-
-
-{:link "", :startdate "-123", :enddate "", :title "test", :importance "50", :id "", :file {:size 2631, :tempfile #<File /tmp/ring-multipart-196505194684475894.tmp>, :content-type "application/octet-stream", :filename "test"}, :description "es", :tags "this, is a, test"}

@@ -29,6 +29,7 @@
     ]
    [:body
     content
+    [:div {:style "height: 100px"}]
     ]
    ))
 
@@ -37,28 +38,36 @@
 
 (defpartial event-fields [{:keys [startdate enddate title description link importance tags id]}]
   (hidden-field "id" id)
+
   (label "startdate" "Start date (year/month/day) Only year is required")
   (on-error :startdate error-item)
   (text-field "startdate" startdate)
   [:a {:href "javascript:void(0)" :id "start-date-picker"} "Picker"]
+
   (label "enddate" "End date (optional)")
   (on-error :enddate error-item)
   (text-field "enddate" enddate)
   [:a {:href "javascript:void(0)" :id "end-date-picker"} "Picker"]
+
   (label "title" "Title")
   (on-error :title error-item)
   (text-field "title" title)
+
   (label "description" "Description")
   (on-error :description error-item)
   (text-area "description" description)
+
   (label "link" "Link (wikipedia, maybe?)")
   (on-error :link error-item)
   (text-field "link" link)
+
   (label "importance" "Importance (1-100)")
   (on-error :importance error-item)
   (text-field "importance" (or importance 50))
+
   (label "file" "Attach files")
   [:input {:type "file" :id "file" :name "file"}]
+
   (label "tags" "Tags (comma delimited)")
   (text-field "tags" tags))
 
@@ -103,15 +112,18 @@
           (and y m) "%Y/%c"
           y "%Y")))
 
+(defn prepare-event [event]
+  (-> (map-keys date event [:startdate :enddate])
+      (dissoc :tags :file)
+      (assoc :start_date_format (detect-date-format (:startdate event))
+             :end_date_format (detect-date-format (:enddate event)))))
+
 (defpage event-post [:post "/event/new"] {:as event}
   (if (valid-event? event)
     (let [req (ring-request)
-          event-for-sql 
-          (-> (map-keys date event [:startdate :enddate])
-              (dissoc :tags :file)
-              (assoc :start_date_format (detect-date-format (:startdate event))
-                     :end_date_format (detect-date-format (:enddate event))))
+          event-for-sql (prepare-event event)
           evt (if (has-value? (:id event))
+                ;id can't be prepared in the model because it's in the where clause
                 (data/update-event! (update-in event-for-sql
                                                [:id]
                                                integer))
@@ -150,28 +162,35 @@
         {:write-json write-json-datetime})
 
 (defn append-tags [e]
-  (assoc e :description
-         (str (:description e)
-              "\n\n"
-              "Tags: "
-              (apply str
-                     (interpose ", " (:tag e))))))
+  (let [tags (:tag e)]
+    (if (seq tags)
+      (assoc e :description
+             (str (:description e)
+                  "\n\n"
+                  "Tags: "
+                  (apply str
+                         (interpose ", " (:tag e)))))
+      e)))
 
 (defn md-desc [e]
   (assoc e :description (md (:description e))))
 
 (defn md-links [e]
-  (assoc e :description
-         (str (:description e)
-              (apply str
-                     (map #(str "[" (:filename %) "]"
-                                "("
-                                "/uploads/"
-                                (:id e)
-                                "/"
-                                (:filename %)
-                                ")\n")
-                          (:uploads e))))))
+  (let [uploads (:uploads e)]
+    (if (seq uploads)
+      (assoc e :description
+             (str (:description e)
+                  "\n\nFiles: "
+                  (apply str
+                         (map #(str "[" (:filename %) "]"
+                                    "("
+                                    "/uploads/"
+                                    (:id e)
+                                    "/"
+                                    (:filename %)
+                                    ")\n")
+                              uploads))))
+      e)))
 
 (defpage "/event/:id" {:keys [id]}
   (json-str (data/get-event (integer id))))
@@ -182,7 +201,7 @@
               :description "All the interesting bits"
               :focus_date "-432-01-01 12:00:00"
               :initial_zoom "57"
-              :events (map md-desc
-                           (map md-links
-                                (map append-tags
-                                     (data/get-all-events))))}]))
+              :events (->> (data/get-all-events)
+                           (map append-tags)
+                           (map md-links)
+                           (map md-desc))}]))

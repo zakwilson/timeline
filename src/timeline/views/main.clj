@@ -237,6 +237,14 @@
                 "\n\nCreated by: " (:user_id e)))
     e))
 
+(defn date-display [e]
+  (let [disp (case (:start_date_format e)
+                   "%Y" "ye"
+                   "%Y/%c" "mo"
+                   "%Y/%c/%e" "da"
+                   nil "ye")]
+    (assoc e :date_display disp)))
+
 (defpage "/event/:id" {:keys [id]}
   (json-str (data/get-event (integer id))))
 
@@ -256,4 +264,5 @@
                            (map append-tags)
                            (map md-links)
                            (map md-desc)
-                           (map tag-user))}]))
+                           (map tag-user)
+                           (map date-display))}]))

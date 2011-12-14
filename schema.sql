@@ -52,7 +52,8 @@ CREATE TABLE event (
     importance integer,
     parent integer,
     start_date_format character varying(20),
-    end_date_format character varying(20)
+    end_date_format character varying(20),
+    user_id character varying(50)
 );
 
 
@@ -83,6 +84,19 @@ CREATE TABLE uploads (
 ALTER TABLE public.uploads OWNER TO timeline;
 
 --
+-- Name: users; Type: TABLE; Schema: public; Owner: timeline; Tablespace: 
+--
+
+CREATE TABLE users (
+    username character varying(50) NOT NULL,
+    email character varying(255) NOT NULL,
+    hash character varying(60) NOT NULL
+);
+
+
+ALTER TABLE public.users OWNER TO timeline;
+
+--
 -- Name: events_pkey; Type: CONSTRAINT; Schema: public; Owner: timeline; Tablespace: 
 --
 
@@ -104,6 +118,22 @@ ALTER TABLE ONLY tag
 
 ALTER TABLE ONLY uploads
     ADD CONSTRAINT uploads_pkey PRIMARY KEY (event_id, filename);
+
+
+--
+-- Name: users_pkey; Type: CONSTRAINT; Schema: public; Owner: timeline; Tablespace: 
+--
+
+ALTER TABLE ONLY users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (username);
+
+
+--
+-- Name: event_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: timeline
+--
+
+ALTER TABLE ONLY event
+    ADD CONSTRAINT event_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(username);
 
 
 --

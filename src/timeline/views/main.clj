@@ -130,7 +130,8 @@
                 (data/update-event! (update-in event-for-sql
                                                [:id]
                                                integer))
-                (data/add-event! (dissoc event-for-sql :id)))]
+                (data/add-event! (assoc (dissoc event-for-sql :id)
+                                   :user_id (:username (session/get :user)))))]
       (spit "event" event)
       (data/tag-event! evt (:tags event))
       (when (has-value? (get-in req [:params :file :filename]))
@@ -165,13 +166,14 @@
   (layout [:div#maincontent
            [:div#placement {:style "height: 600px"}]
            [:form (hidden-field "include" (:include include))]
-           [:div#flash {:style "margin-top: 30px"}
+           [:div#flash {:style "margin-top: 20px"}
             (session/flash-get)]
+           [:br]
            (if (session/get :user)
              [:div#entryform 
               [:p (str "Logged in as "
-                         (:username (session/get :user))
-                         " ")
+                       (:username (session/get :user))
+                       " ")
                (link-to "/user/logout" "(Log out)")]
               (edit-event-form)]
              [:div#loginform 
@@ -225,10 +227,15 @@
                                     "/"
                                     (:filename %)
                                     ")\n")
-                              uploads))
-                  (when (:user_id e)
-                    (str "\n\nCreated by: " (:user_id e)))))
+                              uploads))))
       e)))
+
+(defn tag-user [e]
+  (if (:user_id e)
+    (assoc e :description
+           (str (:description e)
+                "\n\nCreated by: " (:user_id e)))
+    e))
 
 (defpage "/event/:id" {:keys [id]}
   (json-str (data/get-event (integer id))))
@@ -248,4 +255,5 @@
                              (data/get-all-events))
                            (map append-tags)
                            (map md-links)
-                           (map md-desc))}]))
+                           (map md-desc)
+                           (map tag-user))}]))

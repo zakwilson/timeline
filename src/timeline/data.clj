@@ -97,7 +97,7 @@
          tag-event!)
 
 (defn add-event! [e]
-  "Event keys: [:startdate :enddate :title :description :link :importance]"
+  "Event keys: [:startdate :enddate :title :description :link :importance :username]"
   (let [tags (:tag e)
         e (dissoc e :tag)
         new-event (insert event

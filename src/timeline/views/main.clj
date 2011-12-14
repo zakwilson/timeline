@@ -21,7 +21,7 @@
     [:style "textarea {width: 600px; height: 300px;}
              label {display: block;}
              input {width: 200px; background-color: white; color: black;}
-             div#entryform, div#loginform{float: left; margin-right: 2em;}"]
+             div#entryform, div#loginform{min-height: 10em; float: left; margin-right: 2em;}"]
     (if (string? js)
       (include-js js)
       (map include-js js))
@@ -156,7 +156,8 @@
   (form-to [:get "/"]
            (label "include" "Tags to include (comma delimited)")
            (text-field "include")
-           (submit-button "Search")))
+           (submit-button "Search"))
+  [:p (link-to "/" "Show all")])
 
 (defpage "/edit" {:as event}
   (layout
@@ -257,7 +258,7 @@
                              include
                              "All the interesting bits")
               :focus_date "-432-01-01 12:00:00"
-              :initial_zoom "57"
+              :initial_zoom "61"
               :events (->> (if (has-value? include)
                              (data/search include)
                              (data/get-all-events))

@@ -37,13 +37,29 @@
 (defn prepare-integers [evt & keys]
   (map-keys integer evt keys))
 
-(defn transform-dates [evt & keys]
+(defn transform-timestamps [evt & keys]
   (map-keys sql->date
             evt
             keys))
 
-(defn prepare-dates [evt & keys]
+(defn prepare-timestamps [evt & keys]
   (map-keys date->sql
+            evt
+            keys))
+
+(defn maybe-from-long [millis]
+  (when millis (from-long millis)))
+
+(defn maybe-to-long [dt]
+  (when dt (to-long dt)))
+
+(defn transform-dates [evt & keys]
+  (map-keys maybe-from-long
+            evt
+            keys))
+
+(defn prepare-dates [evt & keys]
+  (map-keys maybe-to-long
             evt
             keys))
 
@@ -207,5 +223,7 @@
     (-> (select* event)
         (join tag)
         (where {:tag.tag [in inctags]})
+;        (where {:tag.tag [not [in exctags]]})
         (with tag)
         (exec))))
+

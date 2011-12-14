@@ -21,7 +21,7 @@
     [:style "textarea {width: 600px; height: 300px;}
              label {display: block;}
              input {width: 200px; background-color: white; color: black;}
-             div#entryform{float: left;}"]
+             div#entryform, div#loginform{float: left; margin-right: 2em;}"]
     (if (string? js)
       (include-js js)
       (map include-js js))

@@ -10,7 +10,8 @@
         [zutil util map]
         [timeline common])
   (:require [timeline.data :as data]
-            [clojure.string :as s])
+            [clojure.string :as s]
+            [noir.session :as session])
   (:import [java.io File]))
 
 (defpartial layout [content & {:keys [js css]}]
@@ -119,7 +120,8 @@
              :end_date_format (detect-date-format (:enddate event)))))
 
 (defpage event-post [:post "/event/new"] {:as event}
-  (if (valid-event? event)
+  (if (and (valid-event? event)
+           (session/get :user))
     (let [req (ring-request)
           event-for-sql (prepare-event event)
           evt (if (has-value? (:id event))
@@ -136,20 +138,40 @@
     (render "/" event)))
 
 (defpage event-delete [:post "/event/delete"] {:as event}
-  (data/delete-event! {:id (integer (:id event))})
+  (when (session/get :user)
+    (data/delete-event! {:id (integer (:id event))}))
   "")
+
+(defpartial login-form []
+  (form-to [:post "/user/login"]
+           (label "username" "Username")
+           (text-field "username")
+           (label "password" "Password")
+           (password-field "password")
+           (submit-button "Log in")))
 
 (defpage "/" {:as event}
   (layout [:div#maincontent
            [:div#placement {:style "height: 600px"}]
-           [:div#entryform {:style "margin-top: 30px"}
-            (edit-event-form event)]]
+           [:div#flash {:style "margin-top: 30px"}
+            (session/flash-get)]
+           (if (session/get :user)
+             [:div#entryform 
+              [:p (str "Logged in as "
+                         (:username (session/get :user))
+                         " ")
+               (link-to "/user/logout" "(Log out)")]
+                         
+              (edit-event-form event)]
+             [:div#loginform 
+              (link-to "/user/new" "Create an account")
+              (login-form)])]
           :css ["/widget/css/aristo/jquery-ui-1.8.5.custom.css"
                 "/widget/js/timeglider/Timeglider.css"
                 "/css/anytimec.css"]
           :js ["/widget/js/jquery-1.4.4.min.js"
                "/widget/js/jquery-ui-1.8.9.custom.min.js"
-               "/widget/js/timeglider.min.js"
+               "/widget/js/timeglider-0.0.9.min.js"
                "/javascript/timeline.js"
                "/javascript/anytimec.js"
                "/javascript/event.js"]))
@@ -189,7 +211,9 @@
                                     "/"
                                     (:filename %)
                                     ")\n")
-                              uploads))))
+                              uploads))
+                  (when (:user_id e)
+                    (str "\n\nCreated by: " (:user_id e)))))
       e)))
 
 (defpage "/event/:id" {:keys [id]}

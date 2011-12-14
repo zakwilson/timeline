@@ -68,6 +68,18 @@
   (table :tag)
   (belongs-to event))
 
+(defentity user
+  (table :users)
+  (has-many event)
+  (prepare
+   #(-> %
+        (assoc :hash
+          (if-not (empty? (:password %))
+            (BCrypt/hashpw (:password %)
+                           (BCrypt/gensalt 10))
+            (:hash %)))
+        (dissoc :password :confirm))))
+
 (defentity event
   (transform
    #(-> %
@@ -78,7 +90,8 @@
         (prepare-dates :startdate :enddate)
         (prepare-integers :importance)))
   (has-many tag)
-  (has-many uploads))
+  (has-many uploads)
+  (belongs-to user))
 
 (declare assign-tag-to-event!
          tag-event!)
@@ -171,3 +184,19 @@
           (where {:event_id (:id evt)}))
   (delete event
           (where {:id (:id evt)})))
+
+(defn user-exists? [username]
+  (not (empty? (select user (where {:username username})))))
+
+(defn add-user! [u]
+  (insert user
+          (values u)))
+
+(defn get-user [username]
+  (first (select user (where {:username username}))))
+
+(defn check-user [username password]
+  (let [u (get-user username)]
+    (when (and u
+               (BCrypt/checkpw password (:hash u)))
+      u)))

@@ -20,7 +20,8 @@
     [:title "Timeline"]
     [:style "textarea {width: 600px; height: 300px;}
              label {display: block;}
-             input {width: 200px; background-color: white; color: black;}"]
+             input {width: 200px; background-color: white; color: black;}
+             div#entryform{float: left;}"]
     (if (string? js)
       (include-js js)
       (map include-js js))
@@ -234,8 +235,12 @@
 
 (defpage timeline "/timeline" {:keys [include]}
   (json-str [{:id "history"
-              :title "A brief history of civilization"
-              :description "All the interesting bits"
+              :title (if (has-value? include)
+                       "Search results"
+                       "A brief history of civilization")
+              :description (if (has-value? include)
+                             include
+                             "All the interesting bits")
               :focus_date "-432-01-01 12:00:00"
               :initial_zoom "57"
               :events (->> (if (has-value? include)

@@ -53,7 +53,9 @@ CREATE TABLE event (
     parent integer,
     start_date_format character varying(20),
     end_date_format character varying(20),
-    user_id character varying(50)
+    user_id character varying(50),
+    newstartdate bigint DEFAULT 0 NOT NULL,
+    newenddate bigint DEFAULT 0
 );
 
 

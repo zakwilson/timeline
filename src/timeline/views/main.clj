@@ -135,7 +135,7 @@
       (when (has-value? (get-in req [:params :file :filename]))
         (data/handle-file evt req))
       (redirect "/"))
-    (render "/" event)))
+    (render "/edit" event)))
 
 (defpage event-delete [:post "/event/delete"] {:as event}
   (when (session/get :user)
@@ -150,9 +150,20 @@
            (password-field "password")
            (submit-button "Log in")))
 
-(defpage "/" {:as event}
+(defpartial search-form []
+  (form-to [:get "/"]
+           (label "include" "Tags to include (comma delimited)")
+           (text-field "include")
+           (submit-button "Search")))
+
+(defpage "/edit" {:as event}
+  (layout
+   (edit-event-form event)))
+
+(defpage "/" {:as include}
   (layout [:div#maincontent
            [:div#placement {:style "height: 600px"}]
+           [:form (hidden-field "include" (:include include))]
            [:div#flash {:style "margin-top: 30px"}
             (session/flash-get)]
            (if (session/get :user)
@@ -161,11 +172,13 @@
                          (:username (session/get :user))
                          " ")
                (link-to "/user/logout" "(Log out)")]
-                         
-              (edit-event-form event)]
+              (edit-event-form)]
              [:div#loginform 
               (link-to "/user/new" "Create an account")
-              (login-form)])]
+              (login-form)])
+           [:div#searchform
+            [:h3 "Search"]
+            (search-form)]]
           :css ["/widget/css/aristo/jquery-ui-1.8.5.custom.css"
                 "/widget/js/timeglider/Timeglider.css"
                 "/css/anytimec.css"]
@@ -219,13 +232,15 @@
 (defpage "/event/:id" {:keys [id]}
   (json-str (data/get-event (integer id))))
 
-(defpage timeline "/timeline" []
+(defpage timeline "/timeline" {:keys [include]}
   (json-str [{:id "history"
               :title "A brief history of civilization"
               :description "All the interesting bits"
               :focus_date "-432-01-01 12:00:00"
               :initial_zoom "57"
-              :events (->> (data/get-all-events)
+              :events (->> (if (has-value? include)
+                             (data/search include)
+                             (data/get-all-events))
                            (map append-tags)
                            (map md-links)
                            (map md-desc))}]))

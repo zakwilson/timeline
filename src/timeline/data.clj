@@ -200,3 +200,12 @@
     (when (and u
                (BCrypt/checkpw password (:hash u)))
       u)))
+
+(defn search [& [include exclude]]
+  (let [inctags (string->tags (or include ""))
+        exctags (string->tags (or exclude ""))]
+    (-> (select* event)
+        (join tag)
+        (where {:tag.tag [in inctags]})
+        (with tag)
+        (exec))))

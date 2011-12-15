@@ -60,8 +60,8 @@ function edit(ev){
 function hide_ev(id){
     var ev_selector = "#ev_" + id;
     var ev_modal_selector = "#ev_ev_" + id + "_modal";
-    $(ev_selector).hide();
-    $(ev_modal_selector).hide();
+    $(ev_selector).remove();
+    $(ev_modal_selector).remove();
 }
 
 function real_del(id){

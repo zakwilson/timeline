@@ -55,12 +55,25 @@ function edit(ev){
     $.ajax({url: "/event/" + id,
             dataType: "json",
             success: populate});
-} 
+}
 
-function del(ev){
-    var id = $(ev).attr('id').substring(3);
+function hide_ev(id){
+    var ev_selector = "#ev_" + id;
+    var ev_modal_selector = "#ev_ev_" + id + "_modal";
+    $(ev_selector).hide();
+    $(ev_modal_selector).hide();
+}
+
+function real_del(id){
     $.ajax({url: "/event/delete",
             type: "POST",
             data: {id: id},
-            success: function () {ev.remove()}});
+            success: function () {hide_ev(id)}}); 
+}
+
+function del(ev){
+    var id = $(ev).attr('id').substring(3);
+    var really = confirm("Really delete?");
+    if (really)
+        real_del(id);
 }
